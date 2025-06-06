@@ -16,7 +16,7 @@ vacantes_file = "vacantes.xlsx"
 if os.path.exists(vacantes_file):
     df_vacantes = pd.read_excel(vacantes_file)
 else:
-    df_vacantes = pd.DataFrame(columns=["COD_ESTABLEC", "DESC_NIVEL", "Vacantes", "Fecha_actualización"])
+    df_vacantes = pd.DataFrame(columns=["COD_ESTABLEC", "DESC_NIVEL", "Vacantes", "Lista_espera", "Fecha_actualización"])
     df_vacantes.to_excel(vacantes_file, index=False)
 
 # --- SELECCIÓN DE MODO ---
@@ -25,7 +25,7 @@ modo = st.radio("Selecciona el modo:", ["🌐 Ver vacantes", "✏️ Declarar va
 
 # --- MODO: DECLARAR VACANTES ---
 if modo == "✏️ Declarar vacantes (Directora)":
-    st.sidebar.title("Ingreso de Vacantes")
+    st.sidebar.title("Ingreso de Vacantes y Listas de Espera")
     establecimientos = df["NOM_ESTABLEC"].unique()
     establecimiento = st.sidebar.selectbox("Selecciona tu establecimiento", establecimientos)
 
@@ -41,21 +41,23 @@ if modo == "✏️ Declarar vacantes (Directora)":
     st.sidebar.markdown(f"**Comuna:** {comuna}")
 
     niveles = df_estab["DESC_NIVEL"].unique()
-    vacantes_input = {}
+    datos_input = {}
 
-    st.sidebar.subheader("Vacantes por Nivel")
+    st.sidebar.subheader("Vacantes y Lista de Espera por Nivel")
     for nivel in niveles:
-        vac = st.sidebar.number_input(f"{nivel}", min_value=0, step=1)
-        vacantes_input[nivel] = vac
+        vac = st.sidebar.number_input(f"{nivel} - Vacantes", min_value=0, step=1)
+        espera = st.sidebar.number_input(f"{nivel} - Lista de espera", min_value=0, step=1)
+        datos_input[nivel] = (vac, espera)
 
-    if st.sidebar.button("Guardar Vacantes"):
+    if st.sidebar.button("Guardar Datos"):
         hoy = datetime.today().strftime("%Y-%m-%d")
         registros = []
-        for nivel, vac in vacantes_input.items():
+        for nivel, (vac, espera) in datos_input.items():
             registros.append({
                 "COD_ESTABLEC": cod_estab,
                 "DESC_NIVEL": nivel,
                 "Vacantes": vac,
+                "Lista_espera": espera,
                 "Fecha_actualización": hoy
             })
 
@@ -67,7 +69,7 @@ if modo == "✏️ Declarar vacantes (Directora)":
 
         df_vacantes = pd.concat([df_vacantes, df_nuevo], ignore_index=True)
         df_vacantes.to_excel(vacantes_file, index=False)
-        st.sidebar.success("✅ Vacantes actualizadas correctamente.")
+        st.sidebar.success("✅ Datos actualizados correctamente.")
 
 # --- MODO: MAPA INTERACTIVO ---
 st.subheader("🗺️ Mapa de establecimientos y vacantes")
@@ -86,9 +88,9 @@ for cod in df_mapa["COD_ESTABLEC"].unique():
 
     vacantes_estab = df_vacantes[df_vacantes["COD_ESTABLEC"] == cod]
     if not vacantes_estab.empty:
-        tabla_html = vacantes_estab[["DESC_NIVEL", "Vacantes"]].to_html(index=False)
+        tabla_html = vacantes_estab[["DESC_NIVEL", "Vacantes", "Lista_espera"]].to_html(index=False)
     else:
-        tabla_html = "<i>No hay vacantes registradas</i>"
+        tabla_html = "<i>No hay datos registrados</i>"
 
     popup = folium.Popup(f"""
         <b>{fila['NOM_ESTABLEC']}</b><br>
