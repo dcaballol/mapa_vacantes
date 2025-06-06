@@ -25,12 +25,6 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-## Despliegue en Streamlit Cloud
-
-1. Sube `app.py`, `requirements.txt`, `vacantes.xlsx` y `jisc.xlsx` a un repositorio en GitHub
-2. Desde [streamlit.io/cloud](https://streamlit.io/cloud), conecta el repositorio
-3. Asegúrate de que el archivo principal sea `app.py`
-4. ¡Listo!
 
 ---
 
