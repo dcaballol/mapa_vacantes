@@ -1,9 +1,54 @@
 import streamlit as st
 import pandas as pd
-import os
 from datetime import datetime
 import folium
 from streamlit_folium import st_folium
+import requests
+from io import BytesIO
+from base64 import b64encode
+
+# --- CONFIG STREAMLIT SECRETS ---
+GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
+GITHUB_REPO = st.secrets["GITHUB_REPO"]   
+VACANTES_FILE = st.secrets["VACANTES_FILE"]  
+
+RAW_URL = f"https://raw.githubusercontent.com/{GITHUB_REPO}/main/{VACANTES_FILE}"
+API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{VACANTES_FILE}"
+
+# --- FUNCIONES ---
+def cargar_vacantes():
+    try:
+        r = requests.get(RAW_URL, headers={"Authorization": f"token {GITHUB_TOKEN}"})
+        if r.status_code == 200:
+            return pd.read_excel(BytesIO(r.content))
+        else:
+            return pd.DataFrame(columns=["COD_ESTABLEC", "DESC_NIVEL", "Vacantes", "Lista_espera", "Fecha_actualización"])
+    except Exception as e:
+        st.error(f"❌ Error cargando vacantes: {e}")
+        return pd.DataFrame(columns=["COD_ESTABLEC", "DESC_NIVEL", "Vacantes", "Lista_espera", "Fecha_actualización"])
+
+def obtener_sha():
+    r = requests.get(API_URL, headers={"Authorization": f"token {GITHUB_TOKEN}"})
+    if r.status_code == 200:
+        return r.json()["sha"]
+    return None
+
+def guardar_vacantes(df):
+    buffer = BytesIO()
+    df.to_excel(buffer, index=False)
+    buffer.seek(0)
+    encoded = b64encode(buffer.read()).decode("utf-8")
+
+    data = {
+        "message": f"update vacantes {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+        "content": encoded,
+        "sha": obtener_sha()
+    }
+    r = requests.put(API_URL, headers={"Authorization": f"token {GITHUB_TOKEN}"}, json=data)
+    if r.status_code not in [200, 201]:
+        st.error("❌ Error al guardar en GitHub")
+    else:
+        st.sidebar.success("✅ Datos guardados en GitHub")
 
 # --- CARGAR BASE ---
 df_niveles = pd.read_excel("jisc.xlsx", sheet_name="comuna_estable_nivel")
@@ -11,13 +56,8 @@ df_contacto = pd.read_excel("jisc.xlsx", sheet_name="direccion_vacantes")
 df_contacto.rename(columns={"CÓDIGO": "COD_ESTABLEC"}, inplace=True)
 df = pd.merge(df_contacto, df_niveles, on="COD_ESTABLEC", how="inner")
 
-# --- CARGAR O CREAR VACANTES ---
-vacantes_file = "vacantes.xlsx"
-if os.path.exists(vacantes_file):
-    df_vacantes = pd.read_excel(vacantes_file)
-else:
-    df_vacantes = pd.DataFrame(columns=["COD_ESTABLEC", "DESC_NIVEL", "Vacantes", "Lista_espera", "Fecha_actualización"])
-    df_vacantes.to_excel(vacantes_file, index=False)
+# --- CARGAR VACANTES DESDE GITHUB ---
+df_vacantes = cargar_vacantes()
 
 # --- MODO APP ---
 st.title("🎒 Portal de Vacantes Escolares")
@@ -66,8 +106,7 @@ if modo == "✏️ Declarar vacantes (Directora)":
                                     (df_vacantes["DESC_NIVEL"].isin(niveles)))]
 
         df_vacantes = pd.concat([df_vacantes, df_nuevo], ignore_index=True)
-        df_vacantes.to_excel(vacantes_file, index=False)
-        st.sidebar.success("✅ Datos actualizados correctamente.")
+        guardar_vacantes(df_vacantes)
 
 # --- BUSCADOR SELECCIONADOR ---
 st.subheader("🗺️ Mapa de establecimientos y vacantes")
