@@ -159,17 +159,36 @@ for cod in df_mapa["COD_ESTABLEC"].unique():
         icon=icono
     ).add_to(m)
 
-# Agregar leyenda
+# Agregar leyenda mejorada
 legend_html = '''
 <div style="position: fixed; 
-            bottom: 50px; right: 50px; width: 200px; height: 140px; 
-            background-color: white; z-index:9999; font-size:14px;
-            border:2px solid grey; border-radius: 5px; padding: 10px">
-<p style="margin: 0;"><b>Leyenda:</b></p>
-<p style="margin: 5px 0;"><i class="fa fa-map-marker" style="color:green"></i> > 10 vacantes</p>
-<p style="margin: 5px 0;"><i class="fa fa-map-marker" style="color:orange"></i> 1-10 vacantes</p>
-<p style="margin: 5px 0;"><i class="fa fa-map-marker" style="color:darkred"></i> Sin vacantes</p>
-<p style="margin: 5px 0;"><i class="fa fa-map-marker" style="color:red"></i> Seleccionado</p>
+            bottom: 50px; right: 50px; width: 220px; 
+            background-color: white; z-index:9999; font-size:15px;
+            border:3px solid #333; border-radius: 8px; padding: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);">
+    <p style="margin: 0 0 10px 0; font-weight: bold; font-size: 16px; color: #333; border-bottom: 2px solid #ddd; padding-bottom: 5px;">
+        📍 Leyenda de Vacantes
+    </p>
+    <div style="margin: 8px 0; display: flex; align-items: center;">
+        <span style="display: inline-block; width: 20px; height: 20px; background-color: green; 
+                     border-radius: 50%; margin-right: 10px; border: 2px solid #333;"></span>
+        <span style="color: #333; font-weight: 500;">> 10 vacantes</span>
+    </div>
+    <div style="margin: 8px 0; display: flex; align-items: center;">
+        <span style="display: inline-block; width: 20px; height: 20px; background-color: orange; 
+                     border-radius: 50%; margin-right: 10px; border: 2px solid #333;"></span>
+        <span style="color: #333; font-weight: 500;">1-10 vacantes</span>
+    </div>
+    <div style="margin: 8px 0; display: flex; align-items: center;">
+        <span style="display: inline-block; width: 20px; height: 20px; background-color: darkred; 
+                     border-radius: 50%; margin-right: 10px; border: 2px solid #333;"></span>
+        <span style="color: #333; font-weight: 500;">Sin vacantes</span>
+    </div>
+    <div style="margin: 8px 0; display: flex; align-items: center;">
+        <span style="display: inline-block; width: 20px; height: 20px; background-color: red; 
+                     border-radius: 50%; margin-right: 10px; border: 2px solid #333;">⭐</span>
+        <span style="color: #333; font-weight: 500;">Seleccionado</span>
+    </div>
 </div>
 '''
 m.get_root().html.add_child(folium.Element(legend_html))
