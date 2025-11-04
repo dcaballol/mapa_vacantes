@@ -2,7 +2,6 @@
 # Portal de Vacantes Escolares
 
 App interactiva desarrollada en Streamlit que permite:
-- Directoras: declarar vacantes y listas de espera por nivel.
 - Comunidad: visualizar datos por establecimiento en un mapa y buscador.
 
 ## Archivos
