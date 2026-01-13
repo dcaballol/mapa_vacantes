@@ -18,10 +18,6 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-## Despliegue
 
-1. Sube estos archivos a GitHub
-2. Conéctalo a Streamlit Cloud
-3. ¡Tu app estará en línea!
 
 ---
