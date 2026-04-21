@@ -17,8 +17,8 @@ def cargar_datos():
     df_base = pd.merge(df_contacto, df_niveles, on="COD_ESTABLEC", how="inner")
     
     # Cargar datos de vacantes del archivo de grupos
-    df_grupos = pd.read_excel("grupos_gesparvu_20260112_202300.xlsx", sheet_name="Datos Grupos")
-    df_resumen_estab = pd.read_excel("grupos_gesparvu_20251028_142114.xlsx", sheet_name="Resumen por Establecimiento")
+    df_grupos = pd.read_excel("grupos_gesparvu_20260413_093134.xlsx", sheet_name="Datos Grupos")
+    df_resumen_estab = pd.read_excel("grupos_gesparvu_20260413_093134.xlsx", sheet_name="Resumen por Establecimiento")
     
     return df_base, df_grupos, df_resumen_estab
 
