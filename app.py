@@ -173,20 +173,28 @@ for cod in df_mapa["COD_ESTABLEC"].unique():
     folium.Marker(
         location=[lat, lon],
         popup=folium.Popup(f"""
-            <div style="width:400px">
-                <h4>{fila['NOM_ESTABLEC']}</h4>
-                <p><b>Directora:</b> {fila['Nombre Directora']}<br>
-                <b>Correo:</b> {fila['Correo electrónico Directora']}<br>
-                <b>Dirección:</b> {fila['DIRECCIÓN  ']}<br>
-                <b>Comuna:</b> {fila['DESC_COMUNA']}</p>
-                <hr>
-                <p><b>📊 Vacantes Totales:</b> {int(vacantes_total)}<br>
-                <b>📈 Ocupación:</b> {ocupacion:.1f}%</p>
-                <hr>
-                <h5>Detalle por Nivel:</h5>
-                {tabla_html}
+            <div style="width:420px; font-size:11px; line-height:1.4">
+                <p style="font-size:13px; font-weight:bold; margin:0 0 6px 0">
+                    {fila['NOM_ESTABLEC']}
+                </p>
+                <p style="margin:0 0 4px 0">
+                    <b>Directora:</b> {fila['Nombre Directora']}<br>
+                    <b>Correo:</b> {fila['Correo electrónico Directora']}<br>
+                    <b>Dirección:</b> {fila['DIRECCIÓN  ']}<br>
+                    <b>Comuna:</b> {fila['DESC_COMUNA']}
+                </p>
+                <hr style="margin:5px 0">
+                <p style="margin:0 0 4px 0">
+                    <b>📊 Vacantes Totales:</b> {int(vacantes_total)}&nbsp;&nbsp;
+                    <b>📈 Ocupación:</b> {ocupacion:.1f}%
+                </p>
+                <hr style="margin:5px 0">
+                <p style="font-size:11px; font-weight:bold; margin:0 0 3px 0">
+                    Detalle por Nivel:
+                </p>
+                <div style="font-size:10.5px">{tabla_html}</div>
             </div>
-        """, max_width=450),
+        """, max_width=500),
         tooltip=f"{fila['NOM_ESTABLEC']} - {int(vacantes_total)} vacantes",
         icon=icono
     ).add_to(m)
@@ -224,7 +232,7 @@ legend_html = '''
 </div>
 '''
 m.get_root().html.add_child(folium.Element(legend_html))
-st_folium(m, width=1200, height=600)
+st_folium(m, use_container_width=True, height=550)
 
 
 # --- TABLA DE RESUMEN ---
@@ -263,6 +271,75 @@ st.dataframe(
         "Vacantes": st.column_config.NumberColumn("Vacantes", format="%d"),
         "% Ocupación": "% Ocupación"
     }
+)
+
+
+# --- TABLA POR NIVEL ---
+st.markdown("---")
+st.subheader("🔎 Detalle de Vacantes por Nivel y Establecimiento")
+st.caption("Usa los filtros de la tabla para buscar por nivel, establecimiento o comuna.")
+
+# Construir tabla de detalle uniendo grupos con info del establecimiento
+df_niveles_tabla = df_grupos.copy()
+df_niveles_tabla.rename(columns={col_cod_grupos: "COD_ESTABLEC"}, inplace=True)
+
+# Agregar nombre del establecimiento y comuna desde df
+info_estab = df[["COD_ESTABLEC", "NOM_ESTABLEC", "DESC_COMUNA"]].drop_duplicates()
+df_niveles_tabla = df_niveles_tabla.merge(info_estab, on="COD_ESTABLEC", how="left")
+
+# Aplicar los mismos filtros de comunas y vacantes que el resto de la app
+df_niveles_tabla = df_niveles_tabla[df_niveles_tabla["DESC_COMUNA"].isin(comuna_filtro)]
+if vacante_filtro == "Con vacantes disponibles (>0)":
+    df_niveles_tabla = df_niveles_tabla[df_niveles_tabla["Vacantes"] > 0]
+elif vacante_filtro == "Sin vacantes (0)":
+    df_niveles_tabla = df_niveles_tabla[df_niveles_tabla["Vacantes"] == 0]
+
+# Filtros adicionales propios de esta tabla
+col_n1, col_n2 = st.columns(2)
+with col_n1:
+    niveles_disp = sorted(df_niveles_tabla["Nivel"].dropna().unique().tolist())
+    nivel_filtro = st.multiselect("Filtrar por nivel:", niveles_disp, default=niveles_disp)
+with col_n2:
+    buscar_estab = st.text_input("🔍 Buscar establecimiento:", placeholder="Escribe parte del nombre...")
+
+df_niveles_tabla = df_niveles_tabla[df_niveles_tabla["Nivel"].isin(nivel_filtro)]
+if buscar_estab:
+    df_niveles_tabla = df_niveles_tabla[
+        df_niveles_tabla["NOM_ESTABLEC"].str.contains(buscar_estab, case=False, na=False)
+    ]
+
+# Seleccionar y ordenar columnas para mostrar
+cols_mostrar = ["NOM_ESTABLEC", "DESC_COMUNA", "Nivel", "Capacidad", "Matrículas", "Vacantes"]
+# "% Ocupación" puede o no estar según versión del scraper
+if "% Ocupación" in df_niveles_tabla.columns:
+    cols_mostrar.append("% Ocupación")
+
+df_niveles_tabla = df_niveles_tabla[cols_mostrar].sort_values(
+    ["Nivel", "Vacantes"], ascending=[True, False]
+)
+
+# Métricas rápidas del filtro activo
+col_m1, col_m2, col_m3 = st.columns(3)
+col_m1.metric("Grupos mostrados", len(df_niveles_tabla))
+col_m2.metric("Capacidad", f"{df_niveles_tabla['Capacidad'].sum():,}")
+col_m3.metric("Vacantes", f"{df_niveles_tabla['Vacantes'].sum():,}")
+
+col_config_nivel = {
+    "NOM_ESTABLEC": "Establecimiento",
+    "DESC_COMUNA": "Comuna",
+    "Nivel": "Nivel",
+    "Capacidad": st.column_config.NumberColumn("Capacidad", format="%d"),
+    "Matrículas": st.column_config.NumberColumn("Matrículas", format="%d"),
+    "Vacantes": st.column_config.NumberColumn("Vacantes", format="%d"),
+}
+if "% Ocupación" in df_niveles_tabla.columns:
+    col_config_nivel["% Ocupación"] = st.column_config.NumberColumn("% Ocupación", format="%.1f%%")
+
+st.dataframe(
+    df_niveles_tabla,
+    use_container_width=True,
+    hide_index=True,
+    column_config=col_config_nivel
 )
 
 
