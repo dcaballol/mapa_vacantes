@@ -28,23 +28,40 @@ def cargar_datos():
     df_grupos = pd.read_excel(archivo_grupos, sheet_name="Datos Grupos")
     df_resumen_estab = pd.read_excel(archivo_grupos, sheet_name="Resumen por Establecimiento")
 
-    return df_base, df_grupos, df_resumen_estab, archivo_grupos
+    # Normalizar columna de código — distintas versiones del scraper usan nombres distintos:
+    # - versión nueva: "Código JUNJI"
+    # - versión antigua: "Establecimiento"
+    # - edge case: quedó como índice del DataFrame
+    posibles = ["Código JUNJI", "Establecimiento"]
+    if df_resumen_estab.index.name in posibles:
+        df_resumen_estab = df_resumen_estab.reset_index()
+    for nombre in posibles:
+        if nombre in df_resumen_estab.columns:
+            df_resumen_estab.rename(columns={nombre: "COD_ESTABLEC"}, inplace=True)
+            break
+
+    if "COD_ESTABLEC" not in df_resumen_estab.columns:
+        st.error(
+            f"No se encontró columna de código en la hoja 'Resumen por Establecimiento'. "
+            f"Columnas disponibles: {df_resumen_estab.columns.tolist()}"
+        )
+        st.stop()
+
+    # Normalizar columna de código en df_grupos (nueva vs antigua)
+    if "Código JUNJI" in df_grupos.columns:
+        col_cod_grupos = "Código JUNJI"
+    else:
+        col_cod_grupos = "Establecimiento"
+
+    # Asegurar tipo string para que los merges no fallen por int vs str
+    df_base["COD_ESTABLEC"] = df_base["COD_ESTABLEC"].astype(str).str.strip()
+    df_resumen_estab["COD_ESTABLEC"] = df_resumen_estab["COD_ESTABLEC"].astype(str).str.strip()
+    df_grupos[col_cod_grupos] = df_grupos[col_cod_grupos].astype(str).str.strip()
+
+    return df_base, df_grupos, df_resumen_estab, archivo_grupos, col_cod_grupos
 
 
-df, df_grupos, df_resumen_estab, archivo_grupos = cargar_datos()
-
-# Mapear código JUNJI → COD_ESTABLEC para unir con la base de establecimientos
-# El scraper genera la columna "Código JUNJI" como índice del resumen
-if "Código JUNJI" in df_resumen_estab.columns:
-    df_resumen_estab.rename(columns={"Código JUNJI": "COD_ESTABLEC"}, inplace=True)
-elif df_resumen_estab.index.name == "Código JUNJI":
-    df_resumen_estab = df_resumen_estab.reset_index()
-    df_resumen_estab.rename(columns={"Código JUNJI": "COD_ESTABLEC"}, inplace=True)
-
-# Asegurar que COD_ESTABLEC sea string en todas las tablas para que los merges no fallen
-df["COD_ESTABLEC"] = df["COD_ESTABLEC"].astype(str).str.strip()
-df_resumen_estab["COD_ESTABLEC"] = df_resumen_estab["COD_ESTABLEC"].astype(str).str.strip()
-df_grupos["Código JUNJI"] = df_grupos["Código JUNJI"].astype(str).str.strip()
+df, df_grupos, df_resumen_estab, archivo_grupos, col_cod_grupos = cargar_datos()
 
 
 # --- TÍTULO ---
@@ -127,8 +144,8 @@ for cod in df_mapa["COD_ESTABLEC"].unique():
     if pd.isna(lat) or pd.isna(lon):
         continue
 
-    # Obtener datos de grupos por nivel — ahora la columna es "Código JUNJI"
-    grupos_estab = df_grupos[df_grupos["Código JUNJI"] == cod]
+    # Obtener datos de grupos por nivel (columna varía según versión del scraper)
+    grupos_estab = df_grupos[df_grupos[col_cod_grupos] == cod]
 
     if not grupos_estab.empty:
         resumen_nivel = grupos_estab.groupby("Nivel").agg({
